@@ -1258,7 +1258,7 @@ Tombloo.Service.extractors = new Repository([
 			return $x('id("video_player_embed_code_text")/text()');
 		},
 	},
-	
+/*
 	{
 		name : 'Video - Rimo',
 		ICON : 'http://rimo.tv/favicon.ico',
@@ -1277,7 +1277,7 @@ Tombloo.Service.extractors = new Repository([
 			return $x('id("player-tag-M")/@value') || $x('(//table[@class="player-embed-tags"]//input)[last()]/@value');
 		},
 	},
-	
+*/	
 	{
 		name : 'Video - Nico Nico Douga',
 		ICON : 'http://www.nicovideo.jp/favicon.ico',
@@ -1308,6 +1308,90 @@ Tombloo.Service.extractors = new Repository([
 				body    : escapeHTML(ctx.selection.trim()),
 			}
 		},
+	},
+
+	{
+		name : 'Audio',
+		ICON : 'chrome://tombloo/skin/music.png',
+		check : function (ctx) {
+			return (ctx.target.tagName.toLowerCase() == 'audio') && ctx.mediaURL;
+		},
+		extract : function (ctx) {
+			return {
+				type: 'audio',
+				itemUrl: ctx.mediaURL
+			};
+		}
+	},
+	
+	{
+		name : 'Audio - The Hype Machine',
+		ICON : 'http://static.hypem.com/favicon.ico',
+		check : function (ctx) {
+			return ctx.host.match(/\bhypem.com$/) &&
+				this.getTrackURIFromContext(ctx);
+		},
+
+		extract : function (ctx) {
+			var u = this.getTrackURIFromContext(ctx);
+
+			return {
+				type: 'audio',
+				itemUrl: u,
+				suffix: '.mp3'
+			};
+		},
+
+		getTrackURIFromContext: function (ctx) {
+			var trackid = this.findTrackIdFromContextNode(ctx.target);
+			if ( !trackid )
+				return null;
+		
+			var track = this.findTrackFromList(ctx.window.trackList, trackid);
+			if ( !track )
+				return null;
+
+			return this.getTrackURIFromTrackInfo(track);
+		},
+
+		getTrackURIFromTrackInfo: function (track) {
+			return track.key ? (
+				[ "http://hypem.com/serve/play", track.id, track.key ].join("/")
+			) : null;
+		},
+
+		findTrackIdFromContextNode : function (node) {
+			try {
+				var site = $x('ancestor-or-self::*[starts-with(@id,"section_")]', node, true).pop();
+				for  ( var retry = 1; retry >= 0; retry-- ) {
+					var tracks = $x('.//*[starts-with(@id, "fav_track_")]', site, true);
+					if ( tracks.length > 1 ) {
+						site = $x('ancestor-or-self::*[@class="same-post"]', node, true).pop();
+					} else {
+						break;
+					}
+				}
+
+				var track = tracks.shift();
+				var m = track.id.match(/^fav_track_(\d+)$/);
+				return m[1];
+			} catch ( e ) {
+				return 0;
+			}
+		},
+
+		findTrackFromList : function(tracklist, trackid) {
+			for ( var k in tracklist ) {
+				var list = tracklist[k];
+				for ( var j in list ) {
+					var track = list[j];
+					if( track.id == trackid) {
+						return track;
+					}
+				}
+			}
+			return null;
+		}
 	},
 	
 	{
@@ -1397,7 +1481,7 @@ Tombloo.Service.extractors = new Repository([
 				type : 'regular',
 			}
 		}
-	},
+	}
 ]);
 
 Tombloo.Service.extractors.extract = function(ctx, ext){

@@ -34,6 +34,7 @@ var Tombloo = {
 			Regular.initialize();
 			Photo.initialize();
 			Video.initialize();
+			Audio.initialize();
 			Link.initialize();
 			Conversation.initialize();
 			Quote.initialize();
@@ -177,6 +178,18 @@ Tombloo.Video = Tombloo.Entity({
 		
 		body   : 'TEXT',
 		source : 'TEXT',
+		player : 'TEXT',
+	}
+});
+
+Tombloo.Audio = Tombloo.Entity({
+	name : 'audios',
+	fields : {
+		id     : 'INTEGER PRIMARY KEY',
+		user   : 'TEXT',
+		date   : 'TIMESTAMP',
+		
+		body   : 'TEXT',
 		player : 'TEXT',
 	}
 });

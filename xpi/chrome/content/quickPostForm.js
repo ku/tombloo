@@ -322,6 +322,12 @@ FormPanel.prototype = {
 			tags        : {toggle : true},
 			description : {toggle : true},
 		},
+		audio : {
+			item        : {type : 'label'},
+			itemUrl     : {toggle : true},
+			tags        : {toggle : true},
+			description : {toggle : true},
+		},
 	},
 	
 	toggles : [],

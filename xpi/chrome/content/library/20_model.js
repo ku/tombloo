@@ -457,7 +457,7 @@ models.register({
 
 models.register({
 	name : '4u',
-	ICON : 'http://www.straightline.jp/html/common/static/favicon.ico',
+	ICON : 'http://static.straightline.jp/html/common/static/favicon.ico',
 	
 	URL : 'http://4u.straightline.jp/',
 	
@@ -532,19 +532,87 @@ models.register({
 	},
 });
 
+if(AppInfo.OS.match(/^(Darwin|WINNT)$/) ){
+	models.register( {
+		name : 'iTunes',
+		_ICON: null,
+		set ICON(v){ this._ICON = v; },
+		get ICON(){
+			if ( this._ICON )
+				return this._ICON;
+
+			var defaultIcon = 'chrome://tombloo/skin/music.png';
+			if ( AppInfo.OS == 'WINNT' )
+				return defaultIcon; 
+
+			var iconfilename = 'itunesicon.png';
+			var iconfile = getDataDir(iconfilename);
+			if ( iconfile.exists() )
+				return 'file://' + iconfile.path; 
+
+			var sips = new LocalFile('/usr/bin/sips');
+			if ( !sips.exists() )
+				return defaultIcon;
+
+			var process = new Process(sips);
+			var args = [
+				'-s', 'format',  'png',
+				'/Applications/iTunes.app/Contents/Resources/iTunes.icns',
+				'-z', 16, 16,
+				'--out', iconfile.path
+			];
+			process.run(false, args, args.length);
+			return 'file://' + iconfile.path; 
+		},
+		
+		check : function(ps){
+			return ps.type == 'audio'
+		},
+
+		addTrackImplementations: {
+			WINNT: function (file) {
+				executeWSH(function (file) {
+					var iTunes = WScript.CreateObject("iTunes.Application");
+					var list = iTunes.LibraryPlaylist;
+					list.AddFile(file);
+				}, [file.path], true);
+			},
+			Darwin: function (file) {
+				var process = new Process(new LocalFile('/usr/bin/osascript'));
+				var args = [
+					'-e',
+					[
+						'set aFile to POSIX file ("' + file.path + '")',
+						'tell app "iTunes" to add aFile'
+					].join("\n")
+				];
+				process.run(false, args, args.length);
+			}
+		},
+		
+		post : function(ps){
+			var modelLocal = models.find('Local').shift();
+			var self = this;
+			return modelLocal.writeToDisk(ps).addCallback(
+				self.addTrackImplementations[AppInfo.OS]
+			);
+		}
+	} );
+}
+
 models.register({
 	name : 'Local',
 	ICON : 'chrome://tombloo/skin/local.ico',
 	
 	check : function(ps){
-		return (/(regular|photo|quote|link)/).test(ps.type);
+		return (/(regular|photo|quote|link|audio)/).test(ps.type);
 	},
 	
 	post : function(ps){
-		if(ps.type=='photo'){
-			return this.Photo.post(ps);
+		if(ps.type=='photo' || ps.type=='audio'){
+			return this.writeToDisk(ps);
 		} else {
-			return Local.append(getDataDir(ps.type + '.txt'), ps);
+			return this.append(getDataDir(ps.type + '.txt'), ps);
 		}
 	},
 	
@@ -556,44 +624,43 @@ models.register({
 		
 		return succeed();
 	},
-	
-	Photo : {
-		post : function(ps){
-			var file = getDataDir('photo');
-			createDir(file);
-			
+
+	writeToDisk : function (ps) {
+		var file = getDataDir(ps.type);
+		createDir(file);
+
+		if(ps.file){
+			file.append(ps.file.leafName);
+		} else {
+			var uri = createURI(ps.itemUrl);
+			var fileName = validateFileName(uri.fileName);
+			file.append(fileName + (ps.suffix || ''));
+		}
+		clearCollision(file);
+
+		return succeed().addCallback(function(){
 			if(ps.file){
-				file.append(ps.file.leafName);
+				ps.file.copyTo(file.parent, file.leafName);
+				return file;
 			} else {
-				var uri = createURI(ps.itemUrl);
-				var fileName = validateFileName(uri.fileName);
-				file.append(fileName);
+				return download(ps.itemUrl, file);
 			}
-			clearCollision(file);
-			
-			return succeed().addCallback(function(){
-				if(ps.file){
-					ps.file.copyTo(file.parent, file.leafName);
-					return file;
-				} else {
-					return download(ps.itemUrl, file);
-				}
-			}).addCallback(function(file){
-				if(AppInfo.OS == 'Darwin'){
-					var script = getTempDir('setcomment.scpt');
-					
-					putContents(script, [
-						'set aFile to POSIX file ("' + file.path + '" as Unicode text)',
-						'set cmtStr to ("' + ps.pageUrl + '" as Unicode text)',
-						'tell application "Finder" to set comment of (file aFile) to cmtStr'
-					].join('\n'), 'UTF-16');
-					
-					var process = new Process(new LocalFile('/usr/bin/osascript'));
-					process.run(false, [script.path], 1);
-				}
-			});
-		},
-	},
+		}).addCallback(function(file){
+			if(AppInfo.OS == 'Darwin'){
+				var script = getTempDir('setcomment.scpt');
+				
+				putContents(script, [
+					'set aFile to POSIX file ("' + file.path + '" as Unicode text)',
+					'set cmtStr to ("' + ps.pageUrl + '" as Unicode text)',
+					'tell application "Finder" to set comment of (file aFile) to cmtStr'
+				].join('\n'), 'UTF-16');
+				
+				var process = new Process(new LocalFile('/usr/bin/osascript'));
+				process.run(false, [script.path], 1);
+			}
+			return file;
+		});
+	}
 	
 });
 

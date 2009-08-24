@@ -82,6 +82,7 @@
 								<label value="Reblog"/>
 								<label value="Favorite"/>
 							</vbox></hbox></treecol>
+							<treecol cycler="true"><hbox><label value="Audio"/></hbox></treecol>
 						</treecols>
 						<treechildren flex="1" />
 					</tree>
@@ -297,7 +298,7 @@
 		}
 		
 		PosterTree.prototype = extend(new AbstractTreeView(), {
-			TYPES : 'regular photo quote link video conversation favorite'.split(' '),
+			TYPES : 'regular photo quote link video conversation favorite audio'.split(' '),
 			
 			resetData : function(rows){
 				// ロード以前はboxが存在しない
