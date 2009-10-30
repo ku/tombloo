@@ -165,13 +165,9 @@ models.register({
 	name : 'Amazon',
 	ICON : 'http://www.amazon.co.jp/favicon.ico',
 	getItem : function(asin){
-		return request('http://webservices.amazon.co.jp/onca/xml', {
+		return request('http://tomblooamazonapi.ku0522.user.dev.freebaseapps.com/index', {
 			queryString : {
-				Service        : 'AWSECommerceService',
-				SubscriptionId : '0DCQFXHRBNT9GN9Z64R2',
-				Operation      : 'ItemLookup',
-				ResponseGroup  : 'Medium,Images',
-				ItemId         : asin,
+				asin         : asin,
 			},
 		}).addCallback(function(res){
 			var xml = convertToXML(res.responseText);
